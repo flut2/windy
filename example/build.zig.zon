@@ -1,0 +1,14 @@
+.{
+    .fingerprint = 0x224afd03279379d4,
+    .name = .zig_dialog_example,
+    .version = "1.0.0",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "example.zig",
+    },
+    .minimum_zig_version = "0.16.0-dev.1484+d0ba6642b",
+    .dependencies = .{
+        .zig_dialog = .{ .path = ".." },
+    },
+}

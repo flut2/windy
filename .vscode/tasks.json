@@ -1,0 +1,23 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Debug",
+            "type": "shell",
+            "command": "zig build -Doptimize=Debug -freference-trace",
+            "options": {
+                "cwd": "${workspaceFolder}/example"
+            },
+        },
+        {
+            "label": "ReleaseFast",
+            "type": "shell",
+            "command": "zig build -Doptimize=ReleaseFast -freference-trace",
+            "options": {
+                "cwd": "${workspaceFolder}/example"
+            },
+        },
+    ]
+}

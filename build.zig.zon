@@ -1,0 +1,20 @@
+.{
+    .name = .zig_dialog,
+    .version = "0.1.0",
+    .fingerprint = 0x93103e55d72a95d,
+    .minimum_zig_version = "0.16.0-dev.1484+d0ba6642b",
+    .dependencies = .{
+        .zigwin32 = .{
+            .url = "git+https://github.com/marlersoft/zigwin32.git#5587b16fa040573846a6bf531301f6206d31a6bf",
+            .hash = "zigwin32-25.0.28-preview-AAAAAICM5AMResOGQnQ85mfe60TTOQeMtt7GRATUOKoP",
+            .lazy = true,
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "LICENSE",
+        "README.md",
+    },
+}
