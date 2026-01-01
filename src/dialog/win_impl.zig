@@ -2,9 +2,9 @@ const std = @import("std");
 
 const win32 = @import("win32").everything;
 
-const zd = @import("zd.zig");
+const windy = @import("../windy.zig");
 
-fn appendFilters(allocator: std.mem.Allocator, dialog: *win32.IFileDialog, filters: []const zd.Filter) !void {
+fn appendFilters(allocator: std.mem.Allocator, dialog: *win32.IFileDialog, filters: []const windy.Filter) !void {
     const com_filters = try allocator.alloc(win32.COMDLG_FILTERSPEC, filters.len);
     for (filters, com_filters) |f, *cf| {
         var ext_list: std.ArrayList(u8) = .empty;
@@ -37,8 +37,8 @@ pub fn openDialog(
     comptime multiple_selection: bool,
     allocator: std.mem.Allocator,
     child_allocator: std.mem.Allocator,
-    dialog_type: zd.DialogType,
-    filters: []const zd.Filter,
+    dialog_type: windy.DialogType,
+    filters: []const windy.Filter,
     title: []const u8,
     default_path: ?[]const u8,
 ) !if (multiple_selection) []const []const u8 else []const u8 {
@@ -126,7 +126,7 @@ pub fn openDialog(
 pub fn saveDialog(
     allocator: std.mem.Allocator,
     child_allocator: std.mem.Allocator,
-    filters: []const zd.Filter,
+    filters: []const windy.Filter,
     title: []const u8,
     default_path: ?[]const u8,
 ) ![]const u8 {
@@ -170,8 +170,8 @@ pub fn saveDialog(
 
 pub fn message(
     allocator: std.mem.Allocator,
-    level: zd.MessageLevel,
-    buttons: zd.MessageButtons,
+    level: windy.MessageLevel,
+    buttons: windy.MessageButtons,
     text: []const u8,
     title: []const u8,
 ) !bool {
@@ -200,8 +200,13 @@ pub fn message(
     return res == .OK or res == .YES;
 }
 
-pub fn colorChooser(color: zd.Rgba) !zd.Rgba {
-    var custom_colors: [16]u32 = @splat(0xFFFFFFFF);
+pub fn colorChooser(
+    _: std.mem.Allocator,
+    color: windy.Rgba,
+    _: bool,
+    _: []const u8,
+) !windy.Rgba {
+    var custom_colors: [16]u32 = @splat(0xFFFFFF);
 
     var choose_color = std.mem.zeroes(win32.CHOOSECOLORW);
     choose_color.lStructSize = @sizeOf(win32.CHOOSECOLORW);

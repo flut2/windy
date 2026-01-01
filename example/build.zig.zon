@@ -1,6 +1,6 @@
 .{
-    .fingerprint = 0x224afd03279379d4,
-    .name = .zig_dialog_example,
+    .name = .windy_example,
+    .fingerprint = 0x8420a3f6b89b53d5,
     .version = "1.0.0",
     .paths = .{
         "build.zig",
@@ -9,6 +9,7 @@
     },
     .minimum_zig_version = "0.15.2",
     .dependencies = .{
-        .zig_dialog = .{ .path = ".." },
+        .windy = .{ .path = ".." },
+        .stbi = .{ .path = "libs/stbi" },
     },
 }

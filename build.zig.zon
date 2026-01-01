@@ -1,7 +1,7 @@
 .{
-    .name = .zig_dialog,
-    .version = "0.1.0",
-    .fingerprint = 0x93103e55d72a95d,
+    .name = .windy,
+    .version = "0.2.0",
+    .fingerprint = 0xa1fff25a0435b2c0,
     .minimum_zig_version = "0.15.2",
     .dependencies = .{
         .zigwin32 = .{

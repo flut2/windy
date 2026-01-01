@@ -1,13 +1,18 @@
-## zig-dialog
-Cross-platform dialog library in Zig (work in progress)
+## Windy
+Cross-platform windowing library.
 
 An example implementation can be found over at `./example`.
 
-Supported dialog types:
-- Various file choosers (single/multiple file/directory open, file save)
-- Info, warning and error messages
-- Color choosers
+Supported features:
+- Windows
+- Input
+- Clipboard
+- Cursors
+- Dialogs (file, color, message)
 
 Supported OSes:
-- Linux / BSDs: GTK3 (requires dev headers), Zenity (requires Zenity to be present on the user's computer)
-- Windows
+- Linux / BSDs:
+    - X11 (requires xcb, xcb-xkb, xcb-render, xcb-render-util and xkbcommon-x11 to build)
+    - Dialog notes: either GTK3 (requires dev headers) or Zenity, `-Duse_gtk={}` to change
+- Windows:
+    - Dialogs only for now

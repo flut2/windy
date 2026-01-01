@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const zd = @import("zd.zig");
+const windy = @import("../windy.zig");
 
 fn runCommand(allocator: std.mem.Allocator, argv: []const []const u8) !struct {
     text: []const u8,
@@ -26,7 +26,7 @@ fn runCommand(allocator: std.mem.Allocator, argv: []const []const u8) !struct {
 fn appendFilterArgs(
     allocator: std.mem.Allocator,
     args: *std.ArrayList([]const u8),
-    filters: []const zd.Filter,
+    filters: []const windy.Filter,
 ) !void {
     for (filters) |filter| {
         var aw: std.Io.Writer.Allocating = .init(allocator);
@@ -44,8 +44,8 @@ pub fn openDialog(
     comptime multiple_selection: bool,
     allocator: std.mem.Allocator,
     child_allocator: std.mem.Allocator,
-    dialog_type: zd.DialogType,
-    filters: []const zd.Filter,
+    dialog_type: windy.DialogType,
+    filters: []const windy.Filter,
     title: []const u8,
     default_path: ?[]const u8,
 ) !if (multiple_selection) []const []const u8 else []const u8 {
@@ -73,7 +73,7 @@ pub fn openDialog(
 pub fn saveDialog(
     allocator: std.mem.Allocator,
     child_allocator: std.mem.Allocator,
-    filters: []const zd.Filter,
+    filters: []const windy.Filter,
     title: []const u8,
     default_path: ?[]const u8,
 ) ![]const u8 {
@@ -91,8 +91,8 @@ pub fn saveDialog(
 
 pub fn message(
     allocator: std.mem.Allocator,
-    level: zd.MessageLevel,
-    buttons: zd.MessageButtons,
+    level: windy.MessageLevel,
+    buttons: windy.MessageButtons,
     text: []const u8,
     title: []const u8,
 ) !bool {
@@ -125,10 +125,10 @@ pub fn message(
 
 pub fn colorChooser(
     allocator: std.mem.Allocator,
-    color: zd.Rgba,
+    color: windy.Rgba,
     use_alpha: bool,
     title: []const u8,
-) !zd.Rgba {
+) !windy.Rgba {
     var args: std.ArrayList([]const u8) = .{};
 
     try args.appendSlice(allocator, &.{

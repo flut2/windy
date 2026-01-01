@@ -4,7 +4,8 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
 
-    const zd_mod = b.dependency("zig_dialog", .{ .target = target, .optimize = optimize });
+    const stbi_dep = b.dependency("stbi", .{ .target = target, .optimize = optimize });
+    const windy_dep = b.dependency("windy", .{ .target = target, .optimize = optimize });
     const exe = b.addExecutable(.{
         .name = "Example",
         .root_module = b.createModule(.{
@@ -13,10 +14,13 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .link_libc = true,
             .imports = &.{
-                .{ .name = "zd", .module = zd_mod.module("zig-dialog") },
+                .{ .name = "windy", .module = windy_dep.module("windy") },
+                .{ .name = "stbi", .module = stbi_dep.module("root") },
             },
         }),
     });
+
+    exe.linkLibrary(stbi_dep.artifact("stbi"));
 
     const run_step = b.addRunArtifact(exe);
     const run = b.step("run", "Run the example");

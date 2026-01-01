@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const zd = @import("zd.zig");
+const windy = @import("../windy.zig");
 
 const FileChooserAction = enum(c_int) {
     open = 0,
@@ -57,7 +57,7 @@ const FloatRgba = extern struct {
     b: f64,
     a: f64,
 
-    fn fromRgba(rgba: zd.Rgba) FloatRgba {
+    fn fromRgba(rgba: windy.Rgba) FloatRgba {
         return .{
             .r = @as(f64, @floatFromInt(rgba.r)) / 255.0,
             .g = @as(f64, @floatFromInt(rgba.g)) / 255.0,
@@ -66,7 +66,7 @@ const FloatRgba = extern struct {
         };
     }
 
-    fn toRgba(self: FloatRgba) zd.Rgba {
+    fn toRgba(self: FloatRgba) windy.Rgba {
         return .{
             .r = @intFromFloat(self.r * 255.0),
             .g = @intFromFloat(self.g * 255.0),
@@ -81,7 +81,7 @@ const SList = extern struct {
     f_next: ?*SList,
 };
 
-fn appendFileFilters(dialog: *anyopaque, filters: []const zd.SentinelFilter) void {
+fn appendFileFilters(dialog: *anyopaque, filters: []const windy.SentinelFilter) void {
     for (filters) |f| {
         const filter = gtk_file_filter_new();
         gtk_file_filter_set_name(filter, f.name);
@@ -98,11 +98,12 @@ fn wait() void {
 
 pub fn openDialog(
     comptime multiple_selection: bool,
+    _: std.mem.Allocator,
     child_allocator: std.mem.Allocator,
-    dialog_type: zd.DialogType,
-    filters: []const zd.SentinelFilter,
-    title: [:0]const u8,
-    default_path: ?[:0]const u8,
+    dialog_type: windy.DialogType,
+    filters: []const windy.Filter,
+    title: []const u8,
+    default_path: ?[]const u8,
 ) !if (multiple_selection) []const []const u8 else []const u8 {
     if (gtk_init_check(null, null) == 0) return error.InitializationFailed;
 
@@ -153,10 +154,11 @@ pub fn openDialog(
 }
 
 pub fn saveDialog(
+    _: std.mem.Allocator,
     child_allocator: std.mem.Allocator,
-    filters: []const zd.SentinelFilter,
-    title: [:0]const u8,
-    default_path: ?[:0]const u8,
+    filters: []const windy.Filter,
+    title: []const u8,
+    default_path: ?[]const u8,
 ) ![]const u8 {
     if (gtk_init_check(null, null) == 0) return error.InitializationFailed;
 
@@ -188,10 +190,11 @@ pub fn saveDialog(
 }
 
 pub fn message(
-    level: zd.MessageLevel,
-    buttons: zd.MessageButtons,
-    text: [:0]const u8,
-    title: [:0]const u8,
+    _: std.mem.Allocator,
+    level: windy.MessageLevel,
+    buttons: windy.MessageButtons,
+    text: []const u8,
+    title: []const u8,
 ) !bool {
     if (gtk_init_check(null, null) == 0) return error.InitializationFailed;
 
@@ -227,10 +230,11 @@ pub fn message(
 }
 
 pub fn colorChooser(
-    color: zd.Rgba,
+    _: std.mem.Allocator,
+    color: windy.Rgba,
     use_alpha: bool,
-    title: [:0]const u8,
-) !zd.Rgba {
+    title: []const u8,
+) !windy.Rgba {
     if (gtk_init_check(null, null) == 0) return error.InitializationFailed;
 
     const dialog = gtk_color_chooser_dialog_new(title, null);
