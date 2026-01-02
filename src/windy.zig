@@ -94,9 +94,8 @@ pub fn vulkanExts() []const [*:0]const u8 {
 }
 
 /// Frees the results of `openDialog()` and `saveDialog()`.
-/// This is just a convenience function that does not do anything special,
-/// it just frees the root slice and its child slices, if any.
-pub fn freeResult(allocator: std.mem.Allocator, result: anytype) void {
+pub fn freeResult(result: anytype) void {
+    const allocator = windy_allocator orelse noinit();
     switch (@TypeOf(result)) {
         []const u8 => allocator.free(result),
         []const []const u8 => {
@@ -231,6 +230,8 @@ pub const Window = struct {
         start_pos: ?Position = null,
     };
 
+    pub const invalid: Window = .{ .id = std.math.maxInt(Id) };
+
     fn PlatformWindowInfo() type {
         if (isLinuxOrBsd()) {
             return if (options.use_wayland)
@@ -354,6 +355,8 @@ pub const Window = struct {
 /// Do not modify fields from user code, will cause issues
 pub const Cursor = struct {
     pub const Id = u64;
+
+    pub const invalid: Cursor = .{ .id = std.math.maxInt(Id) };
 
     id: Id,
 
@@ -508,6 +511,8 @@ pub const Key = enum {
     right_super,
     left_bracket,
     right_bracket,
+    less_than,
+    greater_than,
     num_lock,
     caps_lock,
     scroll_lock,

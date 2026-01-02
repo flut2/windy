@@ -101,9 +101,9 @@ pub fn openDialog(
     _: std.mem.Allocator,
     child_allocator: std.mem.Allocator,
     dialog_type: windy.DialogType,
-    filters: []const windy.Filter,
-    title: []const u8,
-    default_path: ?[]const u8,
+    filters: []const windy.SentinelFilter,
+    title: [:0]const u8,
+    default_path: ?[:0]const u8,
 ) !if (multiple_selection) []const []const u8 else []const u8 {
     if (gtk_init_check(null, null) == 0) return error.InitializationFailed;
 
@@ -156,9 +156,9 @@ pub fn openDialog(
 pub fn saveDialog(
     _: std.mem.Allocator,
     child_allocator: std.mem.Allocator,
-    filters: []const windy.Filter,
-    title: []const u8,
-    default_path: ?[]const u8,
+    filters: []const windy.SentinelFilter,
+    title: [:0]const u8,
+    default_path: ?[:0]const u8,
 ) ![]const u8 {
     if (gtk_init_check(null, null) == 0) return error.InitializationFailed;
 
@@ -193,8 +193,8 @@ pub fn message(
     _: std.mem.Allocator,
     level: windy.MessageLevel,
     buttons: windy.MessageButtons,
-    text: []const u8,
-    title: []const u8,
+    text: [:0]const u8,
+    title: [:0]const u8,
 ) !bool {
     if (gtk_init_check(null, null) == 0) return error.InitializationFailed;
 
@@ -233,7 +233,7 @@ pub fn colorChooser(
     _: std.mem.Allocator,
     color: windy.Rgba,
     use_alpha: bool,
-    title: []const u8,
+    title: [:0]const u8,
 ) !windy.Rgba {
     if (gtk_init_check(null, null) == 0) return error.InitializationFailed;
 

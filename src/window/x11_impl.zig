@@ -139,11 +139,11 @@ pub fn deinit() void {
 pub fn createWindow(allocator: std.mem.Allocator, w: u16, h: u16, opts: windy.Window.Options) !windy.Window {
     const wid = c.xcb_generate_id(xcb.conn);
 
-    const mask = c.XCB_CW_BACK_PIXEL | c.XCB_CW_EVENT_MASK;
-    const values = [_]u32{ switch (opts.back_pixel) {
+    const mask = c.XCB_CW_BACK_PIXEL;
+    const values = [_]u32{switch (opts.back_pixel) {
         .white => xcb.screen.white_pixel,
         .black => xcb.screen.black_pixel,
-    }, 0 };
+    }};
 
     const start_pos: windy.Position = opts.start_pos orelse .{
         .x = @intCast((xcb.screen.width_in_pixels - w) / 2),
@@ -330,6 +330,7 @@ fn handleEvent(e: [*c]c.xcb_generic_event_t) !void {
         },
         c.XCB_SELECTION_NOTIFY => {
             const notify: *c.xcb_selection_notify_event_t = @ptrCast(e);
+            if (notify.property != xcb.clipboard_atom) return;
 
             var ty: c.xcb_atom_t = c.XCB_ATOM_NONE;
             var format: u8 = 4;
@@ -809,6 +810,8 @@ fn symToKey(sym: c.xkb_keysym_t) windy.Key {
         c.XKB_KEY_Super_R => .right_super,
         c.XKB_KEY_bracketleft => .left_bracket,
         c.XKB_KEY_bracketright => .right_bracket,
+        c.XKB_KEY_less => .less_than,
+        c.XKB_KEY_greater => .greater_than,
         c.XKB_KEY_Num_Lock => .num_lock,
         c.XKB_KEY_Caps_Lock => .caps_lock,
         c.XKB_KEY_Scroll_Lock => .scroll_lock,
