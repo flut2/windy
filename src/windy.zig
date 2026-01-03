@@ -287,20 +287,15 @@ pub const Window = struct {
         try wind_ns.setCursor(self, cursor);
     }
 
-    // pub fn move(self: Window, pos: Position) !void {
-    //     if (windy_allocator == null) noinit();
-    //     try wind_ns.move(self, pos);
-    // }
+    pub fn resize(self: Window, size: Size) !void {
+        if (windy_allocator == null) noinit();
+        try wind_ns.resizeWindow(self, size);
+    }
 
-    // pub fn show(self: Window) !void {
-    //     if (windy_allocator == null) noinit();
-    //     try wind_ns.show(self);
-    // }
-
-    // pub fn hide(self: Window) !void {
-    //     if (windy_allocator == null) noinit();
-    //     try wind_ns.hide(self);
-    // }
+    pub fn move(self: Window, pos: Position) !void {
+        if (windy_allocator == null) noinit();
+        try wind_ns.moveWindow(self, pos);
+    }
 
     pub fn registerRefreshCb(self: *Window, cb: ?refreshCallback) !void {
         if (windy_allocator == null) noinit();
@@ -396,11 +391,11 @@ pub const Size = struct {
 pub const refreshCallback = *const fn (wind: *Window) void;
 pub const resizeCallback = *const fn (wind: *Window, w: u16, h: u16) void;
 pub const moveCallback = *const fn (wind: *Window, x: i16, y: i16) void;
-pub const keyCallback = *const fn (wind: *Window, state: PressState, key: Key, mods: KeyMods) void;
-pub const charCallback = *const fn (wind: *Window, state: PressState, char: u21, mods: KeyMods) void;
-pub const mouseCallback = *const fn (wind: *Window, state: PressState, mouse: MouseButton, x: i16, y: i16, mods: MouseMods) void;
-pub const mouseMoveCallback = *const fn (wind: *Window, x: i16, y: i16, mods: MouseMods) void;
-pub const scrollCallback = *const fn (wind: *Window, x: f64, y: f64, mods: MouseMods) void;
+pub const keyCallback = *const fn (wind: *Window, state: PressState, key: Key, mods: Mods) void;
+pub const charCallback = *const fn (wind: *Window, state: PressState, char: u21, mods: Mods) void;
+pub const mouseCallback = *const fn (wind: *Window, state: PressState, mouse: MouseButton, x: i16, y: i16, mods: Mods) void;
+pub const mouseMoveCallback = *const fn (wind: *Window, x: i16, y: i16, mods: Mods) void;
+pub const scrollCallback = *const fn (wind: *Window, x: f64, y: f64, mods: Mods) void;
 
 pub const Callbacks = struct {
     refresh: ?refreshCallback = null,
@@ -413,7 +408,7 @@ pub const Callbacks = struct {
     scroll: ?scrollCallback = null,
 };
 
-pub const KeyMods = packed struct {
+pub const Mods = packed struct {
     shift: bool = false,
     caps_lock: bool = false,
     ctrl: bool = false,
@@ -582,20 +577,6 @@ pub const MouseButton = enum {
     m32,
 
     invalid,
-};
-
-pub const MouseMods = packed struct {
-    shift: bool = false,
-    caps_lock: bool = false,
-    ctrl: bool = false,
-    alt: bool = false,
-    num_lock: bool = false,
-    super: bool = false,
-    left_mouse: bool = false,
-    middle_mouse: bool = false,
-    right_mouse: bool = false,
-    m4: bool = false,
-    m5: bool = false,
 };
 
 pub const MessageLevel = enum { info, warn, err };

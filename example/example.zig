@@ -13,19 +13,19 @@ fn moveCb(_: *windy.Window, x: i16, y: i16) void {
     std.log.info("Moved to x={} y={}", .{ x, y });
 }
 
-fn keyCb(_: *windy.Window, state: windy.PressState, key: windy.Key, mods: windy.KeyMods) void {
+fn keyCb(_: *windy.Window, state: windy.PressState, key: windy.Key, mods: windy.Mods) void {
     std.log.info("Key {} {}, mods: {}", .{ key, state, mods });
 }
 
-fn charCb(_: *windy.Window, state: windy.PressState, char: u21, mods: windy.KeyMods) void {
+fn charCb(_: *windy.Window, state: windy.PressState, char: u21, mods: windy.Mods) void {
     std.log.info("Char {u} {}, mods: {}", .{ char, state, mods });
 }
 
-fn mouseCb(_: *windy.Window, state: windy.PressState, mouse: windy.MouseButton, x: i16, y: i16, mods: windy.MouseMods) void {
+fn mouseCb(_: *windy.Window, state: windy.PressState, mouse: windy.MouseButton, x: i16, y: i16, mods: windy.Mods) void {
     std.log.info("Mouse {} {} at x={} y={}, mods: {}", .{ mouse, state, x, y, mods });
 }
 
-fn scrollCb(_: *windy.Window, delta_x: f64, delta_y: f64, mods: windy.MouseMods) void {
+fn scrollCb(_: *windy.Window, delta_x: f64, delta_y: f64, mods: windy.Mods) void {
     std.log.info("Mouse scroll with x={} y={}, mods: {}", .{ delta_x, delta_y, mods });
 }
 

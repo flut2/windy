@@ -139,12 +139,6 @@ pub fn deinit() void {
 pub fn createWindow(allocator: std.mem.Allocator, w: u16, h: u16, opts: windy.Window.Options) !windy.Window {
     const wid = c.xcb_generate_id(xcb.conn);
 
-    const mask = c.XCB_CW_BACK_PIXEL;
-    const values = [_]u32{switch (opts.back_pixel) {
-        .white => xcb.screen.white_pixel,
-        .black => xcb.screen.black_pixel,
-    }};
-
     const start_pos: windy.Position = opts.start_pos orelse .{
         .x = @intCast((xcb.screen.width_in_pixels - w) / 2),
         .y = @intCast((xcb.screen.height_in_pixels - h) / 2),
@@ -153,9 +147,13 @@ pub fn createWindow(allocator: std.mem.Allocator, w: u16, h: u16, opts: windy.Wi
     if (start_pos.x >= xcb.screen.width_in_pixels or start_pos.y >= xcb.screen.height_in_pixels)
         return error.StartPosOutOfBounds;
 
+    const values = [_]u32{switch (opts.back_pixel) {
+        .white => xcb.screen.white_pixel,
+        .black => xcb.screen.black_pixel,
+    }};
     try check(c.xcb_create_window_checked(
         xcb.conn,
-        c.XCB_COPY_FROM_PARENT,
+        xcb.screen.root_depth,
         wid,
         xcb.screen.root,
         start_pos.x,
@@ -165,7 +163,7 @@ pub fn createWindow(allocator: std.mem.Allocator, w: u16, h: u16, opts: windy.Wi
         0,
         c.XCB_WINDOW_CLASS_INPUT_OUTPUT,
         xcb.screen.root_visual,
-        mask,
+        c.XCB_CW_BACK_PIXEL,
         &values,
     ));
 
@@ -452,7 +450,7 @@ fn handleEvent(e: [*c]c.xcb_generic_event_t) !void {
             const press: *c.xcb_key_press_event_t = @ptrCast(e);
             const wind = windy.window_map.getPtr(press.event) orelse return error.WindowMissing;
             const sym = c.xkb_state_key_get_one_sym(xkb.state, press.detail);
-            const mods = keyStateToMods(press.state);
+            const mods = toMods(press.state);
             if (wind.callbacks.key) |cb| cb(wind, .press, symToKey(sym), mods);
             if (wind.callbacks.char) |cb| cb(wind, .press, @intCast(c.xkb_keysym_to_utf32(sym)), mods);
         },
@@ -460,14 +458,14 @@ fn handleEvent(e: [*c]c.xcb_generic_event_t) !void {
             const release: *c.xcb_key_release_event_t = @ptrCast(e);
             const wind = windy.window_map.getPtr(release.event) orelse return error.WindowMissing;
             const sym = c.xkb_state_key_get_one_sym(xkb.state, release.detail);
-            const mods = keyStateToMods(release.state);
+            const mods = toMods(release.state);
             if (wind.callbacks.key) |cb| cb(wind, .release, symToKey(sym), mods);
             if (wind.callbacks.char) |cb| cb(wind, .release, @intCast(c.xkb_keysym_to_utf32(sym)), mods);
         },
         c.XCB_BUTTON_PRESS => {
             const press: *c.xcb_button_press_event_t = @ptrCast(e);
             const wind = windy.window_map.getPtr(press.event) orelse return error.WindowMissing;
-            const mods = mouseStateToMods(press.state);
+            const mods = toMods(press.state);
             const scrollCb = wind.callbacks.scroll;
             switch (press.detail) {
                 4 => (scrollCb orelse return)(wind, 0.0, 1.0, mods),
@@ -487,7 +485,7 @@ fn handleEvent(e: [*c]c.xcb_generic_event_t) !void {
         c.XCB_BUTTON_RELEASE => {
             const release: *c.xcb_button_release_event_t = @ptrCast(e);
             const wind = windy.window_map.getPtr(release.event) orelse return error.WindowMissing;
-            const mods = mouseStateToMods(release.state);
+            const mods = toMods(release.state);
             const scrollCb = wind.callbacks.scroll;
             switch (release.detail) {
                 4 => (scrollCb orelse return)(wind, 0.0, 1.0, mods),
@@ -507,7 +505,7 @@ fn handleEvent(e: [*c]c.xcb_generic_event_t) !void {
         c.XCB_MOTION_NOTIFY => {
             const move: *c.xcb_motion_notify_event_t = @ptrCast(e);
             const wind = windy.window_map.getPtr(move.event) orelse return error.WindowMissing;
-            if (wind.callbacks.mouseMove) |cb| cb(wind, move.event_x, move.event_y, mouseStateToMods(move.state));
+            if (wind.callbacks.mouseMove) |cb| cb(wind, move.event_x, move.event_y, toMods(move.state));
         },
         else => |ty| if (resp == xkb.base_evt) {
             const xkb_any_event: *extern struct {
@@ -626,6 +624,29 @@ pub fn setCursor(wind: windy.Window, cursor: windy.Cursor) !void {
     try tryFlush();
 }
 
+pub fn resizeWindow(wind: windy.Window, size: windy.Size) !void {
+    const vals = [_]u32{ size.w, size.h };
+    try check(c.xcb_configure_window_checked(
+        xcb.conn,
+        @as(u32, @intCast(wind.id)),
+        c.XCB_CONFIG_WINDOW_WIDTH | c.XCB_CONFIG_WINDOW_HEIGHT,
+        &vals,
+    ));
+    try tryFlush();
+}
+
+pub fn moveWindow(wind: windy.Window, pos: windy.Position) !void {
+    if (pos.x < 0 or pos.y < 0) return error.InvalidPosition;
+    const vals = [_]u32{ @intCast(pos.x), @intCast(pos.y) };
+    try check(c.xcb_configure_window_checked(
+        xcb.conn,
+        @as(u32, @intCast(wind.id)),
+        c.XCB_CONFIG_WINDOW_X | c.XCB_CONFIG_WINDOW_Y,
+        &vals,
+    ));
+    try tryFlush();
+}
+
 pub fn registerRefreshCb(wind: *windy.Window, add: bool) !void {
     try registerEventMask(wind, c.XCB_EVENT_MASK_EXPOSURE, add);
 }
@@ -693,31 +714,16 @@ fn updateKeymaps() !void {
     ) orelse return error.InvalidKeyState;
 }
 
-fn keyStateToMods(state: u16) windy.KeyMods {
-    var mods: windy.KeyMods = .{};
-    if (state & c.XCB_MOD_MASK_SHIFT != 0) mods.shift = true;
-    if (state & c.XCB_MOD_MASK_LOCK != 0) mods.caps_lock = true;
-    if (state & c.XCB_MOD_MASK_CONTROL != 0) mods.ctrl = true;
-    if (state & c.XCB_MOD_MASK_1 != 0) mods.alt = true;
-    if (state & c.XCB_MOD_MASK_3 != 0) mods.num_lock = true;
-    if (state & c.XCB_MOD_MASK_5 != 0) mods.super = true;
-    return mods;
-}
-
-fn mouseStateToMods(state: u16) windy.MouseMods {
-    var mods: windy.MouseMods = .{};
-    if (state & c.XCB_KEY_BUT_MASK_SHIFT != 0) mods.shift = true;
-    if (state & c.XCB_KEY_BUT_MASK_LOCK != 0) mods.caps_lock = true;
-    if (state & c.XCB_KEY_BUT_MASK_CONTROL != 0) mods.ctrl = true;
-    if (state & c.XCB_KEY_BUT_MASK_MOD_1 != 0) mods.alt = true;
-    if (state & c.XCB_KEY_BUT_MASK_MOD_3 != 0) mods.num_lock = true;
-    if (state & c.XCB_KEY_BUT_MASK_MOD_5 != 0) mods.super = true;
-    if (state & c.XCB_KEY_BUT_MASK_BUTTON_1 != 0) mods.left_mouse = true;
-    if (state & c.XCB_KEY_BUT_MASK_BUTTON_2 != 0) mods.middle_mouse = true;
-    if (state & c.XCB_KEY_BUT_MASK_BUTTON_3 != 0) mods.right_mouse = true;
-    if (state & c.XCB_KEY_BUT_MASK_BUTTON_4 != 0) mods.m4 = true;
-    if (state & c.XCB_KEY_BUT_MASK_BUTTON_5 != 0) mods.m5 = true;
-    return mods;
+// Key and mouse masks overlap
+fn toMods(state: u16) windy.Mods {
+    return .{
+        .shift = state & c.XCB_MOD_MASK_SHIFT != 0,
+        .caps_lock = state & c.XCB_MOD_MASK_LOCK != 0,
+        .ctrl = state & c.XCB_MOD_MASK_CONTROL != 0,
+        .alt = state & c.XCB_MOD_MASK_1 != 0,
+        .num_lock = state & c.XCB_MOD_MASK_2 != 0,
+        .super = state & c.XCB_MOD_MASK_3 != 0,
+    };
 }
 
 fn symToKey(sym: c.xkb_keysym_t) windy.Key {
