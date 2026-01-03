@@ -11,6 +11,45 @@ const c = @cImport({
     @cInclude("xkbcommon/xkbcommon-x11.h");
 });
 
+const SizeAspect = extern struct {
+    numerator: i32 = 0,
+    denominator: i32 = 0,
+};
+pub const SizeHints = extern struct {
+    flags: packed struct(i32) {
+        user_pos: bool = false,
+        user_size: bool = false,
+        prog_pos: bool = false,
+        prog_size: bool = false,
+        prog_min_size: bool = false,
+        prog_max_size: bool = false,
+        prog_resize_inc: bool = false,
+        prog_aspect: bool = false,
+        prog_base_size: bool = false,
+        prog_gravity: bool = false,
+        pad: u22 = 0,
+    } = .{},
+    /// Formerly `x`, now unused
+    pad1: i32 = 0,
+    /// Formerly `y`, now unused
+    pad2: i32 = 0,
+    /// Formerly `width`, now unused
+    pad3: i32 = 0,
+    /// Formerly `height`, now unused
+    pad4: i32 = 0,
+    min_width: i32 = 0,
+    min_height: i32 = 0,
+    max_width: i32 = 0,
+    max_height: i32 = 0,
+    width_inc: i32 = 0,
+    height_inc: i32 = 0,
+    min_aspect: SizeAspect = .{},
+    max_aspect: SizeAspect = .{},
+    base_w: i32 = 0,
+    base_h: i32 = 0,
+    gravity: i32 = 0,
+};
+
 var xcb: struct {
     conn: *c.xcb_connection_t = undefined,
     screen: *c.xcb_screen_t = undefined,
@@ -35,7 +74,7 @@ var xkb: struct {
 var owned_selection: []u8 = &.{};
 
 pub fn init() !void {
-    var screen_num: c_int = undefined;
+    var screen_num: c_int = 0;
     xcb.conn = c.xcb_connect(null, &screen_num).?;
     errdefer c.xcb_disconnect(xcb.conn);
     try processConnErr(c.xcb_connection_has_error(xcb.conn));
@@ -95,7 +134,6 @@ pub fn init() !void {
         .affectState = required_state_details,
         .stateDetails = required_state_details,
     };
-
     try check(c.xcb_xkb_select_events_aux_checked(
         xcb.conn,
         @as(u16, @intCast(xkb.core_dvid)),
@@ -110,7 +148,7 @@ pub fn init() !void {
     ));
 
     const flag_cookie = c.xcb_xkb_per_client_flags(xcb.conn, @intCast(xkb.core_dvid), c.XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT, 1, 0, 0, 0);
-    var flag_err: [*c]c.xcb_generic_error_t = undefined;
+    var flag_err: [*c]c.xcb_generic_error_t = null;
     _ = c.xcb_xkb_per_client_flags_reply(xcb.conn, flag_cookie, &flag_err);
     if (flag_err) |err| try processErr(err);
 
@@ -253,7 +291,7 @@ pub fn createCursor(
     y_hot: u16,
 ) !windy.Cursor {
     const pid = c.xcb_generate_id(xcb.conn);
-    try check(c.xcb_create_pixmap_checked(xcb.conn, 32, pid, xcb.screen.root, w, h));
+    try check(c.xcb_create_pixmap_checked(xcb.conn, @bitSizeOf(u32), pid, xcb.screen.root, w, h));
 
     const gcid = c.xcb_generate_id(xcb.conn);
     try check(c.xcb_create_gc_checked(xcb.conn, gcid, pid, 0, null));
@@ -268,15 +306,15 @@ pub fn createCursor(
         0,
         0,
         0,
-        32,
+        @bitSizeOf(u32),
         @as(u32, @intCast(argb_raw_img.len)),
         argb_raw_img.ptr,
     ));
 
     const cookie = c.xcb_render_query_pict_formats(xcb.conn);
     const formats = c.xcb_render_query_pict_formats_reply(xcb.conn, cookie, null);
+    defer std.c.free(formats);
     const format = c.xcb_render_util_find_standard_format(formats, c.XCB_PICT_STANDARD_ARGB_32).*.id;
-    std.c.free(formats);
 
     const pcid = c.xcb_generate_id(xcb.conn);
     try check(c.xcb_render_create_picture_checked(xcb.conn, pcid, pid, format, 0, null));
@@ -382,7 +420,7 @@ fn handleEvent(e: [*c]c.xcb_generic_event_t) !void {
                     req.requestor,
                     req.property,
                     c.XCB_ATOM_ATOM,
-                    @sizeOf(c.xcb_atom_t) * 8,
+                    @bitSizeOf(c.xcb_atom_t),
                     targets.len,
                     &targets,
                 ));
@@ -394,7 +432,7 @@ fn handleEvent(e: [*c]c.xcb_generic_event_t) !void {
                     req.requestor,
                     req.property,
                     c.XCB_ATOM_INTEGER,
-                    @sizeOf(@TypeOf(cur)) * 8,
+                    @bitSizeOf(@TypeOf(cur)),
                     1,
                     &cur,
                 ));
@@ -404,7 +442,7 @@ fn handleEvent(e: [*c]c.xcb_generic_event_t) !void {
                 req.requestor,
                 req.property,
                 req.target,
-                8,
+                @bitSizeOf(u8),
                 @intCast(owned_selection.len),
                 owned_selection.ptr,
             )) else prop = c.XCB_ATOM_NONE;
@@ -593,7 +631,7 @@ pub fn setTitle(allocator: std.mem.Allocator, wid: windy.Window.Id, title: [:0]c
             @as(u32, @intCast(wid)),
             prop,
             c.XCB_ATOM_STRING,
-            8,
+            @bitSizeOf(u8),
             @as(u32, @intCast(title.len)),
             title.ptr,
         ));
@@ -606,7 +644,7 @@ pub fn setTitle(allocator: std.mem.Allocator, wid: windy.Window.Id, title: [:0]c
         @as(u32, @intCast(wid)),
         c.XCB_ATOM_WM_CLASS,
         c.XCB_ATOM_STRING,
-        8,
+        @bitSizeOf(u8),
         @as(u32, @intCast(class_str.len)),
         class_str.ptr,
     ));
@@ -621,6 +659,105 @@ pub fn setCursor(wind: windy.Window, cursor: windy.Cursor) !void {
         &vals,
     ));
 
+    try tryFlush();
+}
+
+pub fn setMinWindowSize(wind: *windy.Window, min_size: windy.Size) !void {
+    var size_hints = &wind.platform.size_hints;
+    if (size_hints.flags.prog_min_size and
+        size_hints.min_width == min_size.w and
+        size_hints.min_height == min_size.h)
+        return;
+
+    size_hints.flags.prog_min_size = true;
+    size_hints.min_width = min_size.w;
+    size_hints.min_height = min_size.h;
+
+    try check(c.xcb_change_property(
+        xcb.conn,
+        c.XCB_PROP_MODE_REPLACE,
+        @intCast(wind.id),
+        c.XCB_ATOM_WM_NORMAL_HINTS,
+        c.XCB_ATOM_WM_SIZE_HINTS,
+        @bitSizeOf(u32),
+        @sizeOf(SizeHints) / @sizeOf(u32),
+        size_hints,
+    ));
+    try tryFlush();
+}
+
+pub fn setMaxWindowSize(wind: *windy.Window, max_size: windy.Size) !void {
+    var size_hints = &wind.platform.size_hints;
+    if (size_hints.flags.prog_max_size and
+        size_hints.max_width == max_size.w and
+        size_hints.max_height == max_size.h)
+        return;
+
+    size_hints.flags.prog_max_size = true;
+    size_hints.max_width = max_size.w;
+    size_hints.max_height = max_size.h;
+
+    try check(c.xcb_change_property(
+        xcb.conn,
+        c.XCB_PROP_MODE_REPLACE,
+        @intCast(wind.id),
+        c.XCB_ATOM_WM_NORMAL_HINTS,
+        c.XCB_ATOM_WM_SIZE_HINTS,
+        @bitSizeOf(u32),
+        @sizeOf(SizeHints) / @sizeOf(u32),
+        size_hints,
+    ));
+    try tryFlush();
+}
+
+pub fn setWindowResizeIncr(wind: *windy.Window, incr_size: windy.Size) !void {
+    var size_hints = &wind.platform.size_hints;
+    if (size_hints.flags.prog_resize_inc and
+        size_hints.width_inc == incr_size.w and
+        size_hints.height_inc == incr_size.h)
+        return;
+
+    size_hints.flags.prog_resize_inc = true;
+    size_hints.width_inc = incr_size.w;
+    size_hints.height_inc = incr_size.h;
+
+    try check(c.xcb_change_property(
+        xcb.conn,
+        c.XCB_PROP_MODE_REPLACE,
+        @intCast(wind.id),
+        c.XCB_ATOM_WM_NORMAL_HINTS,
+        c.XCB_ATOM_WM_SIZE_HINTS,
+        @bitSizeOf(u32),
+        @sizeOf(SizeHints) / @sizeOf(u32),
+        size_hints,
+    ));
+    try tryFlush();
+}
+
+pub fn setWindowAspect(wind: *windy.Window, numerator: u16, denominator: u16) !void {
+    var size_hints = &wind.platform.size_hints;
+    if (size_hints.flags.prog_aspect and
+        // only need to check `min_aspect` here since it's set in tandem with `max_aspect`
+        size_hints.min_aspect.numerator == numerator and
+        size_hints.min_aspect.denominator == denominator)
+        return;
+
+    size_hints.flags.prog_aspect = true;
+    size_hints.min_aspect.numerator = numerator;
+    size_hints.min_aspect.denominator = denominator;
+    size_hints.max_aspect.numerator = numerator;
+    size_hints.max_aspect.denominator = denominator;
+
+    try check(c.xcb_change_property(
+        xcb.conn,
+        c.XCB_PROP_MODE_REPLACE,
+        @intCast(wind.id),
+        c.XCB_ATOM_WM_NORMAL_HINTS,
+        c.XCB_ATOM_WM_SIZE_HINTS,
+        @bitSizeOf(u32),
+        @sizeOf(SizeHints) / @sizeOf(u32),
+        size_hints,
+    ));
     try tryFlush();
 }
 

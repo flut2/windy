@@ -239,6 +239,7 @@ pub const Window = struct {
             else
                 struct {
                     event_mask_list: c_int = 0,
+                    size_hints: wind_ns.SizeHints = .{},
                 };
         }
 
@@ -285,6 +286,26 @@ pub const Window = struct {
     pub fn setCursor(self: Window, cursor: Cursor) !void {
         if (windy_allocator == null) noinit();
         try wind_ns.setCursor(self, cursor);
+    }
+
+    pub fn setMinSize(self: *Window, min_size: Size) !void {
+        if (windy_allocator == null) noinit();
+        try wind_ns.setMinWindowSize(self, min_size);
+    }
+
+    pub fn setMaxSize(self: *Window, max_size: Size) !void {
+        if (windy_allocator == null) noinit();
+        try wind_ns.setMaxWindowSize(self, max_size);
+    }
+
+    pub fn setResizeIncr(self: *Window, incr_size: Size) !void {
+        if (windy_allocator == null) noinit();
+        try wind_ns.setWindowResizeIncr(self, incr_size);
+    }
+
+    pub fn setAspect(self: *Window, numerator: u16, denominator: u16) !void {
+        if (windy_allocator == null) noinit();
+        try wind_ns.setWindowAspect(self, numerator, denominator);
     }
 
     pub fn resize(self: Window, size: Size) !void {

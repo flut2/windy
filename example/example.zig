@@ -53,6 +53,9 @@ pub fn main() !void {
     });
     defer wind.destroy();
 
+    try wind.setMinSize(.{ .w = 1280, .h = 720 });
+    try wind.setResizeIncr(.{ .w = 4, .h = 3 });
+
     // Convert from little endian ABGR to ARGB, as that's the required cursor format
     for (0..cursor_image.data.len / 4) |i|
         std.mem.swap(u8, &cursor_image.data[i * 4], &cursor_image.data[i * 4 + 2]);
