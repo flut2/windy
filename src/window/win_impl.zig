@@ -475,12 +475,12 @@ fn windowProc(hwnd: win32.HWND, msg: u32, wp: win32.WPARAM, lp: win32.LPARAM) ca
             cb(wind, shortLower(lp), shortHigher(lp), wind.platform.mods);
             return 0;
         },
-        win32.WM_MOUSEWHEEL => if (wind.callbacks.scroll) |cb| {
+        win32.WM_MOUSEHWHEEL => if (wind.callbacks.scroll) |cb| {
             const delta: f32 = @floatFromInt(shortHigher(wp));
             cb(wind, delta / win32.WHEEL_DELTA, 0, wind.platform.mods);
             return 0;
         },
-        win32.WM_MOUSEHWHEEL => if (wind.callbacks.scroll) |cb| {
+        win32.WM_MOUSEWHEEL => if (wind.callbacks.scroll) |cb| {
             const delta: f32 = @floatFromInt(shortHigher(wp));
             cb(wind, 0, delta / win32.WHEEL_DELTA, wind.platform.mods);
             return 0;
