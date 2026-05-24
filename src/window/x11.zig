@@ -356,25 +356,25 @@ pub fn destroyCursor(cursor: windy.Cursor) void {
         std.log.err("Received error `{}` during cursor destroy", .{e});
 }
 
-pub fn pollEvents() EventError!void {
-    try internalPoll(false);
+pub fn pollEvents(time_sec: i32) EventError!void {
+    try internalPoll(false, time_sec);
 }
 
-pub fn waitEvent() EventError!void {
-    try handleEvent(c.xcb_wait_for_event(xcb.conn));
+pub fn waitEvent(time_sec: i32) EventError!void {
+    try handleEvent(c.xcb_wait_for_event(xcb.conn), time_sec);
 }
 
 /// Returns when we run out of events, or we receive a selection notify event,
 /// if requested through `early_ret`.
-fn internalPoll(early_ret: bool) EventError!void {
+fn internalPoll(early_ret: bool, time_sec: i32) EventError!void {
     var evt = c.xcb_poll_for_event(xcb.conn);
     while (evt) |e| : (evt = c.xcb_poll_for_event(xcb.conn)) {
-        try handleEvent(e);
+        try handleEvent(e, time_sec);
         if (early_ret and e.*.response_type & ~@as(u8, 0x80) == c.XCB_SELECTION_NOTIFY) return;
     }
 }
 
-fn handleEvent(e: [*c]c.xcb_generic_event_t) EventError!void {
+fn handleEvent(e: [*c]c.xcb_generic_event_t, time_sec: i32) EventError!void {
     defer std.c.free(e);
 
     const resp = e.*.response_type;
@@ -444,16 +444,15 @@ fn handleEvent(e: [*c]c.xcb_generic_event_t) EventError!void {
                     &targets,
                 ));
             } else if (req.target == xcb.timestamp_atom) {
-                const cur = std.time.timestamp();
                 try check(c.xcb_change_property_checked(
                     xcb.conn,
                     c.XCB_PROP_MODE_REPLACE,
                     req.requestor,
                     req.property,
                     c.XCB_ATOM_INTEGER,
-                    @bitSizeOf(@TypeOf(cur)),
+                    32,
                     1,
-                    &cur,
+                    &time_sec,
                 ));
             } else if (req.target == xcb.utf8_atom) try check(c.xcb_change_property_checked(
                 xcb.conn,
@@ -597,7 +596,7 @@ fn handleEvent(e: [*c]c.xcb_generic_event_t) EventError!void {
     }
 }
 
-pub fn getClipboard() GetClipboardError![]const u8 {
+pub fn getClipboard(time_sec: i32) GetClipboardError![]const u8 {
     var err: [*c]c.xcb_generic_error_t = null;
     const reply = c.xcb_get_selection_owner_reply(
         xcb.conn,
@@ -623,7 +622,7 @@ pub fn getClipboard() GetClipboardError![]const u8 {
     ));
     try tryFlush();
 
-    try internalPoll(true);
+    try internalPoll(true, time_sec);
     return owned_selection;
 }
 

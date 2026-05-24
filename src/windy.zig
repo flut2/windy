@@ -38,14 +38,16 @@ pub var clipboard_window: *Window = undefined;
 pub var clipboard_buffer: []u8 = &.{};
 
 var windy_allocator: ?std.mem.Allocator = null;
+var windy_io: std.Io = .failing;
 var vulkan_dyn_lib: if (options.vulkan_support) std.DynLib else void = undefined;
 
 pub const InitError = wind_err.InitError || if (options.vulkan_support) std.DynLib.Error else error{};
 
 /// Specify `clip_buf` with an appropriately sized buffer if you wish to use
 /// `getClipboard()` or `setClipboard()`, as the result/input is copied and stored there
-pub fn init(allocator: std.mem.Allocator, clip_buf: []u8) InitError!void {
+pub fn init(allocator: std.mem.Allocator, io: std.Io, clip_buf: []u8) InitError!void {
     windy_allocator = allocator;
+    windy_io = io;
     try wind_ns.init();
     const wind = try wind_ns.clipboardWindow();
     try window_map.put(allocator, wind.id, wind);
@@ -76,17 +78,30 @@ pub fn initialized() bool {
     return windy_allocator != null;
 }
 
+fn secTimeForXcb() i32 {
+    return @intCast(@divFloor(
+        std.Io.Timestamp.now(windy_io, .real).nanoseconds,
+        std.time.ns_per_s,
+    ));
+}
+
 /// Poll for incoming events, after which the registered (`register[...]Cb()`) events
 /// get their callbacks dispatched, if there were any.
 pub fn pollEvents() wind_err.EventError!void {
-    try wind_ns.pollEvents();
+    if (comptime isLinuxOrBsd() and !options.use_wayland)
+        try wind_ns.pollEvents(secTimeForXcb())
+    else
+        try wind_ns.pollEvents();
 }
 
 /// Processes a single event, or blocks until it receives one,
 /// after which the registered (`register[...]Cb()`) events
 /// get their callbacks dispatched, if there were any.
 pub fn waitEvent() wind_err.EventError!void {
-    try wind_ns.waitEvent();
+    if (comptime isLinuxOrBsd() and !options.use_wayland)
+        try wind_ns.waitEvent(secTimeForXcb())
+    else
+        try wind_ns.waitEvent();
 }
 
 /// Notes:
@@ -96,7 +111,10 @@ pub fn waitEvent() wind_err.EventError!void {
 ///
 /// If these are a problem, wrap it in `io.async()` or similar once they're available.
 pub fn getClipboard() wind_err.GetClipboardError![]const u8 {
-    return try wind_ns.getClipboard();
+    return if (comptime isLinuxOrBsd() and !options.use_wayland)
+        try wind_ns.getClipboard(secTimeForXcb())
+    else
+        try wind_ns.getClipboard();
 }
 
 /// Note: This attempts to open the clipboard 5 times on Windows with a 2 ms sleep in between,

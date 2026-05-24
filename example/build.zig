@@ -35,7 +35,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    exe.linkLibrary(stbi_dep.artifact("stbi"));
+    exe.root_module.linkLibrary(stbi_dep.artifact("stbi"));
 
     const run_step = b.addRunArtifact(exe);
     const run = b.step("run", "Run the example");

@@ -72,12 +72,8 @@ fn dialogExamples() windy.dlg_err.Error!void {
         std.log.info("Color chooser returned null", .{});
 }
 
-pub fn main() !void {
-    var dbg_alloc: std.heap.DebugAllocator(.{ .stack_trace_frames = 10 }) = .init;
-    defer _ = dbg_alloc.deinit();
-    const allocator = dbg_alloc.allocator();
-
-    stbi.init(allocator);
+pub fn main(init: std.process.Init) !void {
+    stbi.init(init.gpa, init.io);
     defer stbi.deinit();
 
     var cursor_image: stbi.Image = try .loadFromMemory(@embedFile("cursor.png"), 4);
@@ -85,9 +81,9 @@ pub fn main() !void {
     if (cursor_image.width > std.math.maxInt(u16) or cursor_image.height > std.math.maxInt(u16))
         return error.CursorTooLarge;
 
-    const clip_buf = try allocator.alloc(u8, std.math.maxInt(u12));
-    defer allocator.free(clip_buf);
-    try windy.init(allocator, clip_buf);
+    const clip_buf = try init.gpa.alloc(u8, std.math.maxInt(u12));
+    defer init.gpa.free(clip_buf);
+    try windy.init(init.gpa, init.io, clip_buf);
     defer windy.deinit();
 
     if (options.run_dialog_examples) try dialogExamples();
