@@ -269,7 +269,7 @@ pub const DialogFlags = packed struct(u32) {
 extern fn gtk_main_iteration() c_int;
 
 extern fn gdk_events_pending() c_int;
-extern fn gdk_init_check(p_argc: *c_int, p_argv: *[*][*:0]u8) c_int;
+extern fn gdk_init_check(p_argc: *c_int, p_argv: ?*[*][*:0]u8) c_int;
 
 extern fn gtk_widget_destroy(p_widget: *anyopaque) void;
 extern fn gtk_dialog_run(p_dialog: *anyopaque) ResponseType;

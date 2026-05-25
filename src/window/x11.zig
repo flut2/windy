@@ -626,7 +626,7 @@ pub fn getClipboard(time_sec: i32) GetClipboardError![]const u8 {
     return owned_selection;
 }
 
-pub fn setClipboard(new_buf: []const u8) SetClipboardError!void {
+pub fn setClipboard(_: std.Io, new_buf: []const u8) SetClipboardError!void {
     var w: std.Io.Writer = .fixed(windy.clipboard_buffer);
     w.writeAll(new_buf) catch return error.OutOfMemory;
     owned_selection = w.buffered();

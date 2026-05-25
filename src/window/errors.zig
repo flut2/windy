@@ -161,7 +161,7 @@ pub const WinSetClipboardError = error{
     ///
     /// A more fine-grained error code is logged using `std.log.err`.
     MemoryLock,
-} || WinConversionError;
+} || WinConversionError || std.Io.Cancelable;
 
 pub const WinGetClipboardError = error{
     /// The clipboard is currently in use by another program
@@ -177,7 +177,7 @@ pub const WinGetClipboardError = error{
     ///
     /// A more fine-grained error code is logged using `std.log.err`.
     MemoryLock,
-} || WinConversionError;
+} || WinConversionError || std.Io.Cancelable;
 
 pub const WinCreateWindowError = error{
     /// Creating the window failed.

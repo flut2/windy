@@ -6,7 +6,7 @@ pub fn build(b: *std.Build) void {
 
     const options = .{
         .use_gtk = b.option(bool, "use_gtk", "Whether to use GTK, see the root build.zig for more info.") orelse true,
-        .run_dialog_examples = b.option(bool, "run_dialog_examples", "Whether to run the dialog examples.") orelse false,
+        .run_dialog_examples = b.option(bool, "run_dialog_examples", "Whether to run the dialog examples.") orelse true,
     };
 
     const opt_step = b.addOptions();

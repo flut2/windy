@@ -249,14 +249,14 @@ pub fn move(wind: *windy.Window, pos: windy.Position) MoveError!void {
     );
 }
 
-pub fn getClipboard() GetClipboardError![]const u8 {
+pub fn getClipboard(io: std.Io) GetClipboardError![]const u8 {
     var fba: std.heap.FixedBufferAllocator = .init(windy.clipboard_buffer);
     const allocator = fba.allocator();
 
     var tries: usize = 0;
     while (win32.OpenClipboard(@ptrFromInt(windy.clipboard_window.id)) == 0) : (tries += 1) {
         if (tries == 5) return GetClipboardError.ClipboardLocked;
-        std.Thread.sleep(2 * std.time.ns_per_ms);
+        try io.sleep(.fromMilliseconds(2), .real);
     }
     defer _ = win32.CloseClipboard();
 
@@ -277,12 +277,12 @@ pub fn getClipboard() GetClipboardError![]const u8 {
     return std.unicode.wtf16LeToWtf8Alloc(allocator, std.mem.span(text)) catch GetClipboardError.OutOfMemory;
 }
 
-pub fn setClipboard(new_buf: []const u8) SetClipboardError!void {
+pub fn setClipboard(io: std.Io, new_buf: []const u8) SetClipboardError!void {
     if (new_buf.len == 0) {
         var tries: usize = 0;
         while (win32.OpenClipboard(@ptrFromInt(windy.clipboard_window.id)) == 0) : (tries += 1) {
             if (tries == 5) return SetClipboardError.ClipboardLocked;
-            std.Thread.sleep(2 * std.time.ns_per_ms);
+            try io.sleep(.fromMilliseconds(2), .real);
         }
         _ = win32.EmptyClipboard();
         return;
@@ -311,7 +311,7 @@ pub fn setClipboard(new_buf: []const u8) SetClipboardError!void {
     var tries: usize = 0;
     while (win32.OpenClipboard(@ptrFromInt(windy.clipboard_window.id)) == 0) : (tries += 1) {
         if (tries == 5) return SetClipboardError.ClipboardLocked;
-        std.Thread.sleep(2 * std.time.ns_per_ms);
+        try io.sleep(.fromMilliseconds(2), .real);
     }
 
     _ = win32.EmptyClipboard();

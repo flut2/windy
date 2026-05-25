@@ -89,7 +89,7 @@ pub fn deinit() void {
     window_map.deinit(allocator);
 
     wind_ns.deinit();
-    if (options.vulkan_support) vulkan_dyn_lib.close();
+    if (options.vulkan_support and builtin.os.tag != .windows) vulkan_dyn_lib.close();
 }
 
 pub fn initialized() bool {
@@ -132,7 +132,7 @@ pub fn getClipboard() wind_err.GetClipboardError![]const u8 {
     return if (comptime isLinuxOrBsd() and !options.use_wayland)
         try wind_ns.getClipboard(secTimeForXcb())
     else
-        try wind_ns.getClipboard();
+        try wind_ns.getClipboard(windy_io);
 }
 
 /// Note: This attempts to open the clipboard 5 times on Windows with a 2 ms sleep in between,
@@ -140,7 +140,7 @@ pub fn getClipboard() wind_err.GetClipboardError![]const u8 {
 ///
 /// If this is a problem, wrap it in `io.async()` or similar once they're available.
 pub fn setClipboard(new_buf: []const u8) wind_err.SetClipboardError!void {
-    try wind_ns.setClipboard(new_buf);
+    try wind_ns.setClipboard(windy_io, new_buf);
 }
 
 pub fn vulkanProcAddr(comptime T: type, name: [*:0]const u8) T {
