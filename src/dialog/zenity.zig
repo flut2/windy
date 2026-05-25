@@ -3,36 +3,16 @@ const std = @import("std");
 const windy = @import("../windy.zig");
 const Error = @import("errors.zig").ZenityError;
 
-/// All of these are unreachable on Linux/BSDs, which are the only Zenity targets.
-fn trimUnreachableErrors(e: anyerror) Error {
-    return switch (e) {
-        error.NoDevice,
-        error.InvalidWtf8,
-        error.CurrentWorkingDirectoryUnlinked,
-        error.InvalidBatchScriptArg,
-        error.InvalidUtf8,
-        error.InvalidHandle,
-        error.WaitAbandoned,
-        error.WaitTimeOut,
-        => unreachable,
-        else => return @errorCast(e),
-    };
-}
+fn runCommand(allocator: std.mem.Allocator, io: std.Io, argv: []const []const u8) Error![]const u8 {
+    const proc = try std.process.run(allocator, io, .{ .argv = argv });
+    defer allocator.free(proc.stderr);
 
-fn runCommand(allocator: std.mem.Allocator, argv: []const []const u8) Error![]const u8 {
-    var proc: std.process.Child = .init(argv, allocator);
-    errdefer _ = proc.wait() catch {};
-    proc.stdout_behavior = .Pipe;
+    // This doesn't return an error since stderr isn't always impactful,
+    // for example, lacking GVFS doesn't really impact anything
+    if (proc.stderr.len > 0)
+        std.log.warn("Command error: {s}", .{proc.stderr});
 
-    proc.spawn() catch |e| return trimUnreachableErrors(e);
-
-    var buf: [4096]u8 = undefined;
-    var reader = proc.stdout.?.reader(&buf);
-    const ret = try reader.interface.allocRemaining(allocator, .unlimited);
-
-    const term = proc.wait() catch |e| return trimUnreachableErrors(e);
-    if (term.Exited > 1) return Error.ExitCode;
-    return ret;
+    return proc.stdout;
 }
 
 fn appendFilterArgs(
@@ -56,12 +36,13 @@ pub fn openDialog(
     comptime multiple_selection: bool,
     allocator: std.mem.Allocator,
     child_allocator: std.mem.Allocator,
+    io: std.Io,
     dialog_type: windy.DialogType,
     filters: []const windy.Filter,
     title: []const u8,
     default_path: ?[]const u8,
 ) Error!if (multiple_selection) []const []const u8 else []const u8 {
-    var args: std.ArrayList([]const u8) = .{};
+    var args: std.ArrayList([]const u8) = .empty;
 
     const title_arg = try std.fmt.allocPrint(allocator, "--title={s}", .{title});
     try args.appendSlice(allocator, &.{ "zenity", "--file-selection", title_arg });
@@ -71,11 +52,11 @@ pub fn openDialog(
     if (default_path) |name|
         try args.append(allocator, try std.fmt.allocPrint(allocator, "--filename={s}", .{name}));
 
-    const res = try runCommand(allocator, args.items);
+    const res = try runCommand(allocator, io, args.items);
     const output = std.mem.trimEnd(u8, res, "\n");
     if (!multiple_selection) return try child_allocator.dupe(u8, output);
 
-    var result: std.ArrayList([]const u8) = .{};
+    var result: std.ArrayList([]const u8) = .empty;
     var iter = std.mem.splitScalar(u8, output, '|');
     while (iter.next()) |path|
         try result.append(child_allocator, try child_allocator.dupe(u8, path));
@@ -85,11 +66,12 @@ pub fn openDialog(
 pub fn saveDialog(
     allocator: std.mem.Allocator,
     child_allocator: std.mem.Allocator,
+    io: std.Io,
     filters: []const windy.Filter,
     title: []const u8,
     default_path: ?[]const u8,
 ) Error![]const u8 {
-    var args: std.ArrayList([]const u8) = .{};
+    var args: std.ArrayList([]const u8) = .empty;
 
     const title_arg = try std.fmt.allocPrint(allocator, "--title={s}", .{title});
     try args.appendSlice(allocator, &.{ "zenity", "--file-selection", "--save", title_arg });
@@ -97,18 +79,19 @@ pub fn saveDialog(
     if (default_path) |name|
         try args.append(allocator, try std.fmt.allocPrint(allocator, "--filename={s}", .{name}));
 
-    const res = try runCommand(allocator, args.items);
+    const res = try runCommand(allocator, io, args.items);
     return try child_allocator.dupe(u8, std.mem.trimEnd(u8, res, "\n"));
 }
 
 pub fn message(
     allocator: std.mem.Allocator,
+    io: std.Io,
     level: windy.MessageLevel,
     buttons: windy.MessageButtons,
     text: []const u8,
     title: []const u8,
 ) Error!bool {
-    var args: std.ArrayList([]const u8) = .{};
+    var args: std.ArrayList([]const u8) = .empty;
 
     try args.appendSlice(allocator, &.{
         "zenity",
@@ -131,17 +114,18 @@ pub fn message(
         .err => "--error",
     });
 
-    _ = try runCommand(allocator, args.items);
+    _ = try runCommand(allocator, io, args.items);
     return true;
 }
 
 pub fn colorChooser(
     allocator: std.mem.Allocator,
+    io: std.Io,
     color: windy.Rgba,
     use_alpha: bool,
     title: []const u8,
 ) Error!?windy.Rgba {
-    var args: std.ArrayList([]const u8) = .{};
+    var args: std.ArrayList([]const u8) = .empty;
 
     try args.appendSlice(allocator, &.{
         "zenity",
@@ -155,7 +139,7 @@ pub fn colorChooser(
         }),
     });
 
-    const res = try runCommand(allocator, args.items);
+    const res = try runCommand(allocator, io, args.items);
     const values = std.mem.trimEnd(
         u8,
         std.mem.trimStart(

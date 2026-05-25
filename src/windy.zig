@@ -39,9 +39,22 @@ pub var clipboard_buffer: []u8 = &.{};
 
 var windy_allocator: ?std.mem.Allocator = null;
 var windy_io: std.Io = .failing;
-var vulkan_dyn_lib: if (options.vulkan_support) std.DynLib else void = undefined;
+var vulkan_dyn_lib: if (options.vulkan_support)
+    switch (builtin.os.tag) {
+        .windows => @import("win32").foundation.HINSTANCE,
+        else => std.DynLib,
+    }
+else
+    void = undefined;
 
-pub const InitError = wind_err.InitError || if (options.vulkan_support) std.DynLib.Error else error{};
+pub const InitError =
+    wind_err.InitError ||
+    if (!options.vulkan_support)
+        error{}
+    else switch (builtin.os.tag) {
+        .windows => error{LibraryMissing},
+        else => std.DynLib.Error,
+    };
 
 /// Specify `clip_buf` with an appropriately sized buffer if you wish to use
 /// `getClipboard()` or `setClipboard()`, as the result/input is copied and stored there
@@ -54,13 +67,18 @@ pub fn init(allocator: std.mem.Allocator, io: std.Io, clip_buf: []u8) InitError!
     clipboard_window = window_map.getPtr(wind.id) orelse unreachable;
     clipboard_buffer = clip_buf;
 
-    if (options.vulkan_support)
-        vulkan_dyn_lib = try .open(switch (builtin.os.tag) {
-            .windows => "vulkan-1.dll",
-            .macos => "libvulkan.1.dylib",
-            .openbsd, .netbsd => "libvulkan.so",
-            else => "libvulkan.so.1",
-        });
+    if (options.vulkan_support) {
+        switch (builtin.os.tag) {
+            .windows => {
+                const LoadLibraryW = @import("win32").system.library_loader.LoadLibraryW;
+                const L = std.unicode.wtf8ToWtf16LeStringLiteral;
+                vulkan_dyn_lib = LoadLibraryW(L("vulkan-1.dll")) orelse return InitError.LibraryMissing;
+            },
+            .macos => vulkan_dyn_lib = try .open("libvulkan.1.dylib"),
+            .openbsd, .netbsd => vulkan_dyn_lib = try .open("libvulkan.so"),
+            else => vulkan_dyn_lib = try .open("libvulkan.so.1"),
+        }
+    }
 }
 
 pub fn deinit() void {
@@ -127,7 +145,14 @@ pub fn setClipboard(new_buf: []const u8) wind_err.SetClipboardError!void {
 
 pub fn vulkanProcAddr(comptime T: type, name: [*:0]const u8) T {
     if (!options.vulkan_support) @compileError("Please enable Vulkan support with `-Dvulkan_support=true`");
-    return vulkan_dyn_lib.lookup(T, std.mem.span(name)) orelse null;
+    const name_slice = std.mem.span(name);
+    switch (builtin.os.tag) {
+        .windows => {
+            const GetProcAddress = @import("win32").system.library_loader.GetProcAddress;
+            return @ptrCast(GetProcAddress(vulkan_dyn_lib, name));
+        },
+        else => return vulkan_dyn_lib.lookup(T, name_slice),
+    }
 }
 
 /// This can be called without `-Dvulkan_support=true` if you wish to do so.
@@ -174,7 +199,7 @@ pub fn openDialog(
     };
     const mod = try modParams(requires_sentinel, arena_allocator, unwrapped_title, default_path, filters);
 
-    return dlg_ns.openDialog(multiple_selection, arena_allocator, allocator, dialog_type, mod.filters, mod.title, mod.default_path);
+    return dlg_ns.openDialog(multiple_selection, arena_allocator, allocator, windy_io, dialog_type, mod.filters, mod.title, mod.default_path);
 }
 
 /// Opens a save dialog of the given type, returns the resulting path
@@ -197,7 +222,7 @@ pub fn saveDialog(
     const unwrapped_title = title orelse "Save File";
     const mod = try modParams(requires_sentinel, arena_allocator, unwrapped_title, default_path, filters);
 
-    return dlg_ns.saveDialog(arena_allocator, allocator, mod.filters, mod.title, mod.default_path);
+    return dlg_ns.saveDialog(arena_allocator, allocator, windy_io, mod.filters, mod.title, mod.default_path);
 }
 
 /// Opens a message box of the given level.
@@ -234,7 +259,7 @@ pub fn message(
     else
         text;
 
-    return dlg_ns.message(arena_allocator, level, buttons, mod_text, mod_title);
+    return dlg_ns.message(arena_allocator, windy_io, level, buttons, mod_text, mod_title);
 }
 
 /// Opens a color chooser dialog, setting the initial value to `color`.
@@ -260,7 +285,7 @@ pub fn colorChooser(
     else
         unwrapped_title;
 
-    return dlg_ns.colorChooser(arena_allocator, color, use_alpha, mod_title);
+    return dlg_ns.colorChooser(arena_allocator, windy_io, color, use_alpha, mod_title);
 }
 
 /// Do not modify fields from user code, will cause issues

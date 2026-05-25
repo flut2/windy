@@ -40,6 +40,7 @@ pub fn openDialog(
     comptime multiple_selection: bool,
     _: std.mem.Allocator,
     child_allocator: std.mem.Allocator,
+    _: std.Io,
     dialog_type: windy.DialogType,
     filters: []const windy.SentinelFilter,
     title: [:0]const u8,
@@ -97,6 +98,7 @@ pub fn openDialog(
 pub fn saveDialog(
     _: std.mem.Allocator,
     child_allocator: std.mem.Allocator,
+    _: std.Io,
     filters: []const windy.SentinelFilter,
     title: [:0]const u8,
     default_path: ?[:0]const u8,
@@ -133,6 +135,7 @@ pub fn saveDialog(
 
 pub fn message(
     _: std.mem.Allocator,
+    _: std.Io,
     level: windy.MessageLevel,
     buttons: windy.MessageButtons,
     text: [:0]const u8,
@@ -170,6 +173,7 @@ pub fn message(
 
 pub fn colorChooser(
     _: std.mem.Allocator,
+    _: std.Io,
     color: windy.Rgba,
     use_alpha: bool,
     title: [:0]const u8,

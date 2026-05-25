@@ -8,29 +8,11 @@ pub const GtkError = error{
     Initialize,
 } || std.mem.Allocator.Error;
 
-pub const ZenityError = error{
-    /// The process returned a non-zero error code.
-    ExitCode,
-    /// The color dialog process returned an invalid format
-    /// (not `rgb([u8], [u8], [u8])` or `rgba([u8], [u8], [u8], [f64])`).
-    ResultFormat,
-
-    // `std.posix.ChangeCurDirError` errors, with the unreachable ones trimmed down.
-    AccessDenied,
-    FileSystem,
-    SymLinkLoop,
-    NameTooLong,
-    FileNotFound,
-    SystemResources,
-    NotDir,
-    BadPathName,
-} || std.mem.Allocator.Error ||
-    std.posix.ExecveError ||
-    std.posix.SetIdError ||
-    std.posix.SetPgidError ||
+pub const ZenityError =
+    std.process.RunError ||
     std.fmt.ParseIntError ||
-    std.Io.Reader.LimitedAllocError ||
-    std.Io.Writer.Error;
+    std.Io.Writer.Error ||
+    error{ ResultFormat, ExitCode };
 
 pub const WinError = error{
     /// The dialog instance could not be initialized.
