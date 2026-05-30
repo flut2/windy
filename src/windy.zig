@@ -143,6 +143,7 @@ pub fn setClipboard(new_buf: []const u8) wind_err.SetClipboardError!void {
     try wind_ns.setClipboard(windy_io, new_buf);
 }
 
+/// `T` should be a nullable function pointer.
 pub fn vulkanProcAddr(comptime T: type, name: [*:0]const u8) T {
     if (!options.vulkan_support) @compileError("Please enable Vulkan support with `-Dvulkan_support=true`");
     const name_slice = std.mem.span(name);
@@ -151,7 +152,7 @@ pub fn vulkanProcAddr(comptime T: type, name: [*:0]const u8) T {
             const GetProcAddress = @import("win32").system.library_loader.GetProcAddress;
             return @ptrCast(GetProcAddress(vulkan_dyn_lib, name));
         },
-        else => return vulkan_dyn_lib.lookup(T, name_slice),
+        else => return vulkan_dyn_lib.lookup(T, name_slice) orelse null,
     }
 }
 
